@@ -264,11 +264,11 @@ function generate_order_id() {
 function format_delivery_address($address_data) {
     $formatted = '';
     
-    if (!empty($address_data['line1'])) {
-        $formatted .= $address_data['line1'] . "\n";
+    if (!empty($address_data['address_line1'])) {
+        $formatted .= $address_data['address_line1'] . "\n";
     }
-    if (!empty($address_data['line2'])) {
-        $formatted .= $address_data['line2'] . "\n";
+    if (!empty($address_data['address_line2'])) {
+        $formatted .= $address_data['address_line2'] . "\n";
     }
     if (!empty($address_data['city'])) {
         $formatted .= $address_data['city'] . "\n";

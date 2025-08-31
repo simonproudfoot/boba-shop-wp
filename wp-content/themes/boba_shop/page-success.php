@@ -88,6 +88,75 @@ if (isset($_GET['session_id'])) {
                     // Get order details for display
                     $order_details = get_order_by_session_id($session_id);
                     
+                    // If order details not found, try to create it from session data
+                    if (!$order_details) {
+                        error_log('Order not found in database, creating from session data');
+                        
+                        // Get cart data from session
+                        $cart = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
+                        $delivery_data = isset($_SESSION['delivery_data']) ? $_SESSION['delivery_data'] : [];
+                        
+                        if (!empty($cart) && !empty($delivery_data)) {
+                            // Calculate totals
+                            $subtotal = 0;
+                            foreach ($cart as $item) {
+                                $product_id = isset($item['product_id']) ? $item['product_id'] : $item;
+                                $quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
+                                $price = floatval(get_post_meta($product_id, 'price', true));
+                                $subtotal += $price * $quantity;
+                            }
+                            
+                            $shipping_cost = calculate_shipping_cost($subtotal);
+                            $order_total = $subtotal + $shipping_cost;
+                            
+                            // Format delivery address
+                            $formatted_address = format_delivery_address($delivery_data);
+                            
+                            // Create order data
+                            $order_data = array(
+                                'order_id' => $order_id,
+                                'stripe_session_id' => $session_id,
+                                'customer_email' => $customer_email,
+                                'customer_name' => $customer_name,
+                                'delivery_address' => $formatted_address,
+                                'delivery_notes' => $delivery_data['delivery_notes'] ?? '',
+                                'order_total' => $order_total,
+                                'shipping_cost' => $shipping_cost,
+                                'subtotal' => $subtotal
+                            );
+                            
+                            // Prepare cart items for order
+                            $cart_items = [];
+                            foreach ($cart as $item) {
+                                $product_id = isset($item['product_id']) ? $item['product_id'] : $item;
+                                $quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
+                                $price = floatval(get_post_meta($product_id, 'price', true));
+                                
+                                $cart_items[] = [
+                                    'product_id' => $product_id,
+                                    'variant_id' => isset($item['variant_id']) ? $item['variant_id'] : '',
+                                    'product_name' => get_the_title($product_id),
+                                    'product_sku' => get_post_meta($product_id, 'sku', true),
+                                    'quantity' => $quantity,
+                                    'unit_price' => $price,
+                                    'total_price' => $price * $quantity
+                                ];
+                            }
+                            
+                            $order_data['cart_items'] = $cart_items;
+                            
+                            // Create order in database
+                            $db_order_id = create_order($order_data);
+                            
+                            if ($db_order_id) {
+                                $order_details = get_order_by_session_id($session_id);
+                                error_log('Order created successfully in database with ID: ' . $db_order_id);
+                            } else {
+                                error_log('Failed to create order in database');
+                            }
+                        }
+                    }
+                    
                     // Clear the cart
                     if (isset($_SESSION['cart'])) {
                         unset($_SESSION['cart']);
@@ -96,6 +165,11 @@ if (isset($_GET['session_id'])) {
                     // Clear pending order
                     if (isset($_SESSION['pending_order'])) {
                         unset($_SESSION['pending_order']);
+                    }
+                    
+                    // Clear delivery data
+                    if (isset($_SESSION['delivery_data'])) {
+                        unset($_SESSION['delivery_data']);
                     }
                 } else {
                     $error_message = 'Order could not be updated. Please contact support.';

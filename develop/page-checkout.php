@@ -18,42 +18,6 @@ if (!session_id()) {
 // Get header first to ensure proper rendering of navigation
 get_header();
 
-// Check if we're on the success page
-$is_success_page = isset($_GET['success']) && $_GET['success'] == 1;
-
-// If success page, show different layout
-if ($is_success_page) {
-    // Handle the cart clearing and stock updates
-    $cart = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
-    if (!empty($cart)) {
-        foreach ($cart as $key => $item) {
-            $product_id = isset($item['product_id']) ? $item['product_id'] : $key;
-            $quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
-            
-            $current_stock = intval(get_post_meta($product_id, 'stock', true));
-            $new_stock = max(0, $current_stock - $quantity); // Prevent negative stock
-            update_post_meta($product_id, 'stock', $new_stock);
-            if ($new_stock == 0) {
-                update_post_meta($product_id, 'sold_out', 1); // Mark as sold out if stock reaches 0
-            }
-        }
-        unset($_SESSION['cart']); // Clear cart after updating stock
-    }
-
-    // Show success page with black background
-    echo '<main class="bg-black relative text-white bg-bottom-right pt-16 overflow-hidden" style="background-color: black; min-height: 100vh; padding-top: 100px;">';
-    echo '<img class="object-contain w-full h-auto max-w-6xl mx-auto z-0" src="' . esc_url(get_theme_file_uri('assets/img/success.png')) . '" alt="Success">';
-    echo '</main>';
-
-    get_footer();
-
-    // Add success page styles after footer
-?>
-   
-<?php
-    exit;
-}
-
 // Regular checkout page code follows
 echo '<div class="max-w-4xl mx-auto px-4 md:px-8 py-6 md:py-8 mt-16 bg-white rounded-xl shadow-lg">';
 echo '<h1 class="text-3xl font-bold text-gray-800 mb-8 pb-4 border-b-2 border-gray-200">Checkout</h1>';
@@ -233,13 +197,13 @@ if (!empty($inventory_errors)) {
 $checkout_session = null;
 if (!empty($line_items) && empty($inventory_errors)) {
     try {
-        $checkout_session = \Stripe\Checkout\Session::create([
-            'payment_method_types' => ['card'],
-            'line_items' => $line_items,
-            'mode' => 'payment',
-            'success_url' => home_url('/?checkout=1&success=1'),
-            'cancel_url' => home_url('/?checkout=1'),
-        ]);
+                        $checkout_session = \Stripe\Checkout\Session::create([
+                    'payment_method_types' => ['card'],
+                    'line_items' => $line_items,
+                    'mode' => 'payment',
+                    'success_url' => home_url('/success/?session_id={CHECKOUT_SESSION_ID}'),
+                    'cancel_url' => home_url('/?checkout=1'),
+                ]);
 
         // Debugging - check if session ID is generated
         error_log('Stripe Session ID: ' . $checkout_session->id);
