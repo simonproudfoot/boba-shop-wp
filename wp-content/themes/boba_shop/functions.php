@@ -653,3 +653,4 @@ include(THEMEPATH . '/functions/orders.php');
 include(THEMEPATH . '/functions/ajax-handlers.php');
 include(THEMEPATH . '/functions/stripe-webhook.php');
 include(THEMEPATH . '/functions/admin-orders.php');
+include(THEMEPATH . '/functions/email-templates.php');

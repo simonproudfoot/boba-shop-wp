@@ -135,6 +135,44 @@ function display_orders_admin_page() {
         }
     }
     
+    // Handle test email template
+    if (isset($_POST['test_email_template']) && wp_verify_nonce($_POST['test_email_template'], 'test_email_template')) {
+        // Get the first order for testing
+        $test_order = $wpdb->get_row("SELECT * FROM $table_name ORDER BY id DESC LIMIT 1");
+        
+        if ($test_order) {
+            $test_items = get_order_items($test_order->order_id);
+            
+            // Send test email to admin
+            $admin_email = get_option('admin_email');
+            $test_sent = send_confirmation_email($test_order, $test_items);
+            
+            if ($test_sent) {
+                echo '<div class="notice notice-success"><p>Test email template sent successfully to ' . $admin_email . '</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>Failed to send test email template.</p></div>';
+            }
+        } else {
+            echo '<div class="notice notice-error"><p>No orders found to test email template.</p></div>';
+        }
+    }
+    
+    // Handle test email system
+    if (isset($_POST['test_email_system']) && wp_verify_nonce($_POST['test_email_system'], 'test_email_system')) {
+        if (function_exists('test_email_system')) {
+            $results = test_email_system();
+            echo '<div class="notice notice-info"><p><strong>Email System Test Results:</strong></p>';
+            echo '<ul style="margin-left: 20px;">';
+            echo '<li>Main email function: ' . ($results['main_function'] ? 'SUCCESS' : 'FAILED') . '</li>';
+            echo '<li>Alternative email function: ' . ($results['alternative_function'] ? 'SUCCESS' : 'FAILED') . '</li>';
+            echo '</ul>';
+            echo '<p>Check your error logs for detailed information. Test email sent to: ' . get_option('admin_email') . '</p>';
+            echo '</div>';
+        } else {
+            echo '<div class="notice notice-error"><p>test_email_system function not found. Email templates may not be loaded properly.</p></div>';
+        }
+    }
+    
     // Get orders
     $orders = $wpdb->get_results(
         "SELECT * FROM $table_name ORDER BY created_at DESC"
@@ -154,6 +192,26 @@ function display_orders_admin_page() {
                     </select>
                     <button type="submit" class="button" id="do-bulk-delete" disabled>Apply</button>
                 </form>
+                
+                <!-- Test Email Template -->
+                <div style="display: inline-block; margin-left: 20px;">
+                    <form method="post" style="display: inline;">
+                        <?php wp_nonce_field('test_email_template', 'test_email_nonce'); ?>
+                        <button type="submit" name="test_email_template" class="button button-secondary">
+                            Test Email Template
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Test Email System -->
+                <div style="display: inline-block; margin-left: 20px;">
+                    <form method="post" style="display: inline;">
+                        <?php wp_nonce_field('test_email_system', 'test_email_system_nonce'); ?>
+                        <button type="submit" name="test_email_system" class="button button-secondary">
+                            Test Email System
+                        </button>
+                    </form>
+                </div>
             </div>
             <?php
             // Calculate totals

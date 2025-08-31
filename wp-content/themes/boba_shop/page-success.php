@@ -88,6 +88,46 @@ if (isset($_GET['session_id'])) {
                     // Get order details for display
                     $order_details = get_order_by_session_id($session_id);
                     
+                    // Send confirmation email for existing order
+                    if ($order_details) {
+                        error_log('About to send confirmation email for existing order: ' . $order_details->order_id);
+                        $order_items = get_order_items($order_details->order_id);
+                        error_log('Retrieved existing order items: ' . print_r($order_items, true));
+                        
+                        // Check if function exists
+                        if (function_exists('send_confirmation_email')) {
+                            error_log('send_confirmation_email function exists, calling it for existing order...');
+                            $email_sent = send_confirmation_email($order_details, $order_items);
+                            if ($email_sent) {
+                                error_log('Confirmation email sent for existing order ' . $order_details->order_id);
+                            } else {
+                                error_log('Failed to send confirmation email for existing order ' . $order_details->order_id);
+                                // Try alternative method
+                                error_log('Trying alternative email method for existing order...');
+                                if (function_exists('send_confirmation_email_direct')) {
+                                    $email_sent = send_confirmation_email_direct($order_details, $order_items);
+                                    if ($email_sent) {
+                                        error_log('Alternative email method succeeded for existing order');
+                                    } else {
+                                        error_log('Alternative email method also failed for existing order');
+                                    }
+                                }
+                            }
+                        } else {
+                            error_log('ERROR: send_confirmation_email function does not exist for existing order!');
+                            // Try alternative method
+                            if (function_exists('send_confirmation_email_direct')) {
+                                error_log('Trying alternative email method for existing order...');
+                                $email_sent = send_confirmation_email_direct($order_details, $order_items);
+                                if ($email_sent) {
+                                    error_log('Alternative email method succeeded for existing order');
+                                    } else {
+                                    error_log('Alternative email method also failed for existing order');
+                                }
+                            }
+                        }
+                    }
+                    
                     // If order details not found, try to create it from session data
                     if (!$order_details) {
                         error_log('Order not found in database, creating from session data');
@@ -151,6 +191,46 @@ if (isset($_GET['session_id'])) {
                             if ($db_order_id) {
                                 $order_details = get_order_by_session_id($session_id);
                                 error_log('Order created successfully in database with ID: ' . $db_order_id);
+                                
+                                // Send confirmation email
+                                if ($order_details) {
+                                    error_log('About to send confirmation email for order: ' . $order_details->order_id);
+                                    $order_items = get_order_items($order_details->order_id);
+                                    error_log('Retrieved order items: ' . print_r($order_items, true));
+                                    
+                                    // Check if function exists
+                                    if (function_exists('send_confirmation_email')) {
+                                        error_log('send_confirmation_email function exists, calling it...');
+                                        $email_sent = send_confirmation_email($order_details, $order_items);
+                                        if ($email_sent) {
+                                            error_log('Confirmation email sent for order ' . $order_details->order_id);
+                                        } else {
+                                            error_log('Failed to send confirmation email for order ' . $order_details->order_id);
+                                            // Try alternative method
+                                            error_log('Trying alternative email method...');
+                                            if (function_exists('send_confirmation_email_direct')) {
+                                                $email_sent = send_confirmation_email_direct($order_details, $order_items);
+                                                if ($email_sent) {
+                                                    error_log('Alternative email method succeeded');
+                                                } else {
+                                                    error_log('Alternative email method also failed');
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        error_log('ERROR: send_confirmation_email function does not exist!');
+                                        // Try alternative method
+                                        if (function_exists('send_confirmation_email_direct')) {
+                                            error_log('Trying alternative email method...');
+                                            $email_sent = send_confirmation_email_direct($order_details, $order_items);
+                                            if ($email_sent) {
+                                                error_log('Alternative email method succeeded');
+                                            } else {
+                                                error_log('Alternative email method also failed');
+                                            }
+                                        }
+                                    }
+                                }
                             } else {
                                 error_log('Failed to create order in database');
                             }

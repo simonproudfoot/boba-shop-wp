@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Header Image Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .header-example {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .header-example img {
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .header-example h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .header-example p {
+            margin: 10px 0 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .instructions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .code-block {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Email Header Image Setup Guide</h1>
+    
+    <div class="header-example">
+        <img src="your-logo-here.png" alt="Your Logo" style="border: 2px dashed white;">
+        <h1>Thank You for Your Order!</h1>
+        <p>Your order has been confirmed and is being processed</p>
+    </div>
+    
+    <div class="instructions">
+        <h2>How to Set Up Your Email Header Image</h2>
+        
+        <h3>Option 1: WordPress Customizer (Recommended)</h3>
+        <ol>
+            <li>Go to <strong>Appearance → Customize</strong> in your WordPress admin</li>
+            <li>Click on <strong>Header Image</strong></li>
+            <li>Upload or select your logo/header image</li>
+            <li>Save changes</li>
+        </ol>
+        
+        <h3>Option 2: Direct File Upload</h3>
+        <ol>
+            <li>Upload your header image to <code>/wp-content/uploads/email-header.jpg</code></li>
+            <li>The image should be approximately <strong>400x200px</strong> for optimal display</li>
+            <li>Use JPG or PNG format</li>
+        </ol>
+        
+        <h3>Option 3: Customize in Code</h3>
+        <p>You can modify the email template to use a different image path:</p>
+        
+        <div class="code-block">
+// In functions/email-templates.php, line ~30
+$header_image_url = get_header_image() ?: $site_url . '/wp-content/uploads/email-header.jpg';
+
+// Change to your preferred image:
+$header_image_url = $site_url . '/wp-content/uploads/your-custom-image.jpg';
+        </div>
+        
+        <h3>Image Requirements</h3>
+        <ul>
+            <li><strong>Recommended size:</strong> 400x200 pixels</li>
+            <li><strong>Format:</strong> JPG, PNG, or WebP</li>
+            <li><strong>File size:</strong> Under 200KB for fast email loading</li>
+            <li><strong>Background:</strong> Transparent or light background works best</li>
+        </ul>
+        
+        <h3>Current Image Source</h3>
+        <p>The email template currently looks for images in this order:</p>
+        <ol>
+            <li>WordPress Customizer Header Image (if set)</li>
+            <li>Default path: <code>/wp-content/uploads/email-header.jpg</code></li>
+        </ol>
+    </div>
+    
+    <h2>Email Template Features</h2>
+    <ul>
+        <li><strong>Responsive Design:</strong> Works on all email clients and devices</li>
+        <li><strong>Professional Layout:</strong> Clean, modern design with your branding</li>
+        <li><strong>Complete Order Details:</strong> Shows all order information clearly</li>
+        <li><strong>Call-to-Action:</strong> Includes "Continue Shopping" button</li>
+        <li><strong>Social Links:</strong> Customizable social media links in footer</li>
+        <li><strong>Mobile Optimized:</strong> Responsive design for mobile devices</li>
+    </ul>
+    
+    <h2>Customization Options</h2>
+    <p>You can customize the email template by editing <code>functions/email-templates.php</code>:</p>
+    <ul>
+        <li>Change colors and styling</li>
+        <li>Modify the header text and messaging</li>
+        <li>Add your social media links</li>
+        <li>Customize the footer content</li>
+        <li>Add additional sections or information</li>
+    </ul>
+</body>
+</html>
