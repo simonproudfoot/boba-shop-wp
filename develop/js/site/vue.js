@@ -1,0 +1,329 @@
+// Enhanced Vue Parent File with multi-select category filtering
+Vue.mixin({
+    data() {
+        return {
+            windowWidth: window.innerWidth
+        };
+    },
+    computed: {
+        windowWidthPixels() {
+            return this.windowWidth;
+        }
+    },
+    mounted() {
+        window.addEventListener("resize", this.updateWindowWidth);
+        console.log('myVueObj', myVueObj);
+    },
+    beforeDestroy() {
+        window.removeEventListener("resize", this.updateWindowWidth);
+    },
+    methods: {
+        updateWindowWidth() {
+            this.windowWidth = window.innerWidth;
+        }
+    }
+});
+
+// Get cart count from the localized script
+const initialCartCount = (typeof window.cartCount !== 'undefined')
+    ? parseInt(window.cartCount)
+    : 0;
+
+
+new Vue({
+    el: "#app",
+    data: {
+        navopen: false,
+        mobileMenuOpen: false,
+        cartQuantity: initialCartCount,
+        // Shop filtering and sorting data
+        selectedCategories: [], // Array of objects: [{slug: 'category-slug', name: 'Category Name'}, ...]
+        sortOrder: 'newest',
+        shopProducts: typeof shopProducts !== 'undefined' ? shopProducts : [],
+        showMobileFilter: false,
+        showMobileFilterCategorys: true,
+        showMobileFilterSort: false,
+    },
+    computed: {
+        showMobileFilterCategorysMobile() {
+            return this.showMobileFilterCategorys && this.windowWidth < 768 || this.windowWidth > 768
+        },
+        showMobileFilterSortMobile() {
+            return this.showMobileFilterSort && this.windowWidth < 768 || this.windowWidth > 768
+        },
+        showFilters() {
+            return this.windowWidth > 768 || this.showMobileFilter;
+        },
+        isMobile() {
+            return this.windowWidth <= 768;
+        },
+        // Products filtered and sorted according to user selection
+        filteredProducts() {
+            // Start with all products
+            let result = [...this.shopProducts];
+
+            // Apply category filter
+            if (this.selectedCategories.length > 0) {
+                const categorySlugs = this.selectedCategories.map(cat => cat.slug);
+                result = result.filter(product =>
+                    categorySlugs.includes(product.category_slug)
+                );
+            }
+
+            // Apply sorting
+            switch (this.sortOrder) {
+                case 'newest':
+                    result.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    break;
+                case 'oldest':
+                    result.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    break;
+                case 'price-low':
+                    result.sort((a, b) => a.price - b.price);
+                    break;
+                case 'price-high':
+                    result.sort((a, b) => b.price - a.price);
+                    break;
+            }
+
+            return result;
+        },
+        cartHasItems() {
+            return this.cartQuantity > 0;
+        }
+    },
+    methods: {
+        createInlineStyles() {
+            let inlineStyles = document.querySelectorAll(".inline-style");
+            let styleTag = document.createElement("style");
+            styleTag.type = "text/css";
+            document.body.appendChild(styleTag);
+            for (let i = 0; i < inlineStyles.length; i++) {
+                let inlineStyle = inlineStyles[i];
+                let style = inlineStyle.getAttribute("data-style");
+                styleTag.innerHTML += style;
+            }
+        },
+
+        // --- CART LOGIC ---
+        async addToCart(cartData) {
+            try {
+                const params = new URLSearchParams();
+                params.append('action', 'add_to_cart');
+                for (let key in cartData) {
+                    if (cartData.hasOwnProperty(key)) {
+                        params.append(key, cartData[key]);
+                    }
+                }
+                const response = await fetch(myVueObj.ajaxUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+                const data = await response.json();
+                console.log('Add to cart response:', data); // Debug log
+                if (data.success) {
+                    this.cartQuantity = this.calculateCartQuantity(data.data);
+                    this.updateMenuCartDisplay();
+                }
+                return data;
+            } catch (error) {
+                console.error('Add to cart error:', error); // Debug log
+                return { success: false, error };
+            }
+        },
+        async updateCartQuantity(updateData) {
+            try {
+                const params = new URLSearchParams();
+                params.append('action', 'update_cart_quantity');
+                for (let key in updateData) {
+                    if (updateData.hasOwnProperty(key)) {
+                        params.append(key, updateData[key]);
+                    }
+                }
+                const response = await fetch(myVueObj.ajaxUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+                const data = await response.json();
+                console.log('Update cart response:', data); // Debug log
+                if (data.success) {
+                    this.cartQuantity = this.calculateCartQuantity(data.data);
+                    this.updateMenuCartDisplay();
+                }
+                return data;
+            } catch (error) {
+                console.error('Update cart error:', error); // Debug log
+                return { success: false, error };
+            }
+        },
+        async removeFromCart(removeData) {
+            try {
+                const params = new URLSearchParams();
+                params.append('action', 'remove_from_cart');
+                for (let key in removeData) {
+                    if (removeData.hasOwnProperty(key)) {
+                        params.append(key, removeData[key]);
+                    }
+                }
+                const response = await fetch(myVueObj.ajaxUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+                const data = await response.json();
+                console.log('Remove from cart response:', data); // Debug log
+                if (data.success) {
+                    this.cartQuantity = this.calculateCartQuantity(data.data);
+                    this.updateMenuCartDisplay();
+                }
+                return data;
+            } catch (error) {
+                console.error('Remove from cart error:', error); // Debug log
+                return { success: false, error };
+            }
+        },
+        async getCartCount() {
+            try {
+                const response = await fetch(myVueObj.ajaxUrl + '?action=get_cart_count');
+                const data = await response.json();
+                console.log('Get cart count response:', data); // Debug log
+                if (data.success) {
+                    this.cartQuantity = this.calculateCartQuantity(data.data);
+                    this.updateMenuCartDisplay();
+                }
+                return data;
+            } catch (error) {
+                console.error('Get cart count error:', error); // Debug log
+                return { success: false, error };
+            }
+        },
+        async refreshCartCount() {
+            try {
+                const response = await fetch(myVueObj.ajaxUrl + '?action=get_cart_count');
+                const data = await response.json();
+                console.log('Refresh cart count response:', data); // Debug log
+                if (data.success) {
+                    this.cartQuantity = this.calculateCartQuantity(data.data);
+
+                    // Also update the global window.cartCount for consistency
+                    window.cartCount = this.cartQuantity;
+
+                    // Force update of menu cart display
+                    this.updateMenuCartDisplay();
+
+                    // Force Vue reactivity update
+                    this.$forceUpdate();
+                }
+                return data;
+            } catch (error) {
+                console.error('Failed to refresh cart count:', error);
+                return { success: false, error };
+            }
+        },
+        calculateCartQuantity(cartData) {
+            if (!cartData) return 0;
+
+            console.log('Calculating cart quantity for:', cartData); // Debug log
+
+            // Handle different cart data structures
+            return Object.values(cartData).reduce((sum, item) => {
+                let qty = 0;
+
+                if (typeof item === 'number') {
+                    qty = item;
+                } else if (typeof item === 'object' && item !== null) {
+                    // Handle object with quantity property
+                    qty = item.quantity || item.qty || 0;
+                } else if (typeof item === 'string') {
+                    qty = parseInt(item, 10) || 0;
+                }
+
+                return sum + qty;
+            }, 0);
+        },
+        updateMenuCartDisplay() {
+            // Update cart count in menu (plain JS)
+            const menuLinks = document.querySelectorAll('.menu-item a');
+            for (let i = 0; i < menuLinks.length; i++) {
+                if (menuLinks[i].textContent.indexOf('Cart') !== -1) {
+                    menuLinks[i].textContent = `🛒 Cart (${this.cartQuantity})`;
+                }
+            }
+        },
+        // --- END CART LOGIC ---
+
+        // Multi-select category methods
+        toggleCategory(category) {
+            const index = this.selectedCategories.findIndex(cat => cat.slug === category.slug);
+            if (index === -1) {
+                // Add the category if it's not already selected
+                this.selectedCategories.push(category);
+            } else {
+                // Remove the category if it's already selected
+                this.removeCategory(category.slug);
+            }
+        },
+
+        removeCategory(slug) {
+            this.selectedCategories = this.selectedCategories.filter(cat => cat.slug !== slug);
+        },
+
+        clearAllCategories() {
+            this.selectedCategories = [];
+        },
+
+        isCategorySelected(slug) {
+            return this.selectedCategories.some(cat => cat.slug === slug);
+        },
+
+        // Sorting method
+        setSortOrder(order) {
+            this.sortOrder = order;
+        },
+
+        // --- NAVIGATION LOGIC ---
+        toggleMobileMenu() {
+            this.mobileMenuOpen = !this.mobileMenuOpen;
+            const nav = document.getElementById('navbar-sticky');
+            if (nav) {
+                if (this.mobileMenuOpen) {
+                    nav.classList.remove('hidden');
+                } else {
+                    nav.classList.add('hidden');
+                }
+            }
+        },
+        closeMobileMenuOnLink() {
+            if (this.isMobile && this.mobileMenuOpen) {
+                this.toggleMobileMenu();
+            }
+        }
+        // --- END NAVIGATION LOGIC ---
+    },
+    mounted() {
+        window.addEventListener("resize", this.updateWindowWidth);
+        console.log('myVueObj', myVueObj);
+
+        // Load initial cart count
+        this.refreshCartCount();
+
+        // Set up periodic cart count refresh (optional - uncomment if needed)
+        // setInterval(() => {
+        //     this.refreshCartCount();
+        // }, 30000); // Refresh every 30 seconds
+
+        // --- NAVIGATION LOGIC ---
+        // Hamburger button
+        const hamburger = document.querySelector('[data-collapse-toggle="navbar-sticky"]');
+        if (hamburger) {
+            hamburger.addEventListener('click', this.toggleMobileMenu);
+        }
+        // Close menu on link click (mobile)
+        const navLinks = document.querySelectorAll('#navbar-sticky a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', this.closeMobileMenuOnLink);
+        });
+    }
+});

@@ -1,0 +1,17 @@
+@layer base {
+    body.stage {
+        visibility: hidden;
+    }
+
+    body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
+@layer components {
+    @import "tailwind_components";
+}
+
+
+@import "tailwind_after";

@@ -1,0 +1,257 @@
+Vue.component("productcard", {
+    props: {
+        url: {
+            type: String,
+            default: ''
+        },
+        handopenimg: {
+            type: String,
+            default: ''
+        },
+        handclosingimg: {
+            type: String,
+            default: ''
+        },
+        scytheimg: {
+            type: String,
+            default: ''
+        },
+        image: {
+            type: String,
+            default: ''
+        },
+        category: {
+            type: String,
+            default: ''
+        },
+        price: {
+            type: Number,
+            default: 0
+        },
+        index: {
+            type: Number,
+            default: 0
+        },
+        title: {
+            type: String,
+            default: ''
+        },
+        stockLevel: {
+            type: Number,
+            default: 0
+        },
+        sold_out: {
+            type: Boolean,
+            default: false
+        },
+        productId: {
+            type: Number,
+            required: true
+        },
+        colorVariations: {
+            type: Array,
+            default: []
+        }
+    },
+    data() {
+        return {
+            chosenCount: 1,
+            isAddingToCart: false,
+            addToCartSuccess: false,
+            addToCartError: ''
+        };
+    },
+    computed: {
+        random() {
+            return this.index % 2 === 0
+        },
+        hasVariants() {
+            // If the product has multiple variants (e.g. from colorVariations prop)
+            return Array.isArray(this.colorVariations) && this.colorVariations.length > 0;
+        },
+        allVariantsOutOfStock() {
+            // True if all variants are out of stock
+            return this.hasVariants && this.colorVariations.every(v => !v.stock || v.stock <= 0);
+        },
+        effectiveStockLevel() {
+            if (this.hasVariants) {
+                // Find the sum of all variant stocks, but only if at least one is in stock
+                if (this.allVariantsOutOfStock) return 0;
+                return this.colorVariations.reduce((sum, v) => sum + (parseInt(v.stock, 10) > 0 ? parseInt(v.stock, 10) : 0), 0);
+            }
+            return this.sold_out ? 0 : this.stockLevel;
+        },
+        isOutOfStock() {
+            if (this.hasVariants) {
+                return this.allVariantsOutOfStock;
+            }
+            return this.sold_out || this.stockLevel <= 0;
+        },
+        cardDisabledClass() {
+            return this.effectiveStockLevel > 0 ? '' : 'opacity-30 pointer-events-none';
+        },
+        imageSrc() {
+            if (typeof this.image === 'string') {
+                return this.image || '';
+            }
+            if (this.image && typeof this.image === 'object') {
+                if (this.isLarge && this.image.thumb_2200) {
+                    return this.image.thumb_2200;
+                }
+                if (this.image.thumb_1280) {
+                    return this.image.thumb_1280;
+                }
+                if (this.image.full) {
+                    return this.image.full;
+                }
+            }
+            return '';
+        },
+        imageSrcset() {
+            if (typeof this.image === 'string') {
+                return null;
+            }
+            if (this.image && typeof this.image === 'object') {
+                const srcset = [];
+                if (this.image.thumb_1280) {
+                    srcset.push(`${this.image.thumb_1280} 1280w`);
+                }
+                if (this.image.thumb_2200 && this.image.thumb_2200 !== this.image.thumb_1280) {
+                    srcset.push(`${this.image.thumb_2200} 2200w`);
+                }
+                if (this.image.full && this.image.full !== this.image.thumb_1280 && this.image.full !== this.image.thumb_2200) {
+                    srcset.push(`${this.image.full} 1920w`);
+                }
+                return srcset.length ? srcset.join(', ') : null;
+            }
+            return null;
+        },
+        imageSizes() {
+            return '(max-width: 1280px) 1280px, 2200px';
+        },
+        cartUrl() {
+            return window.location.origin + '/?checkout=1';
+        }
+    },
+    mounted() {
+        // Debug log for troubleshooting
+        console.log('[productcard] PROPS:', this.$props);
+        console.log('[productcard] sold_out:', this.sold_out, 'stockLevel:', this.stockLevel, 'hasVariants:', this.hasVariants, 'effectiveStockLevel:', this.effectiveStockLevel);
+    },
+    methods: {
+        async addToCart() {
+            console.log('[productcard] addToCart effectiveStockLevel:', this.effectiveStockLevel);
+            if (this.isAddingToCart || this.effectiveStockLevel <= 0) {
+                return;
+            }
+
+            this.isAddingToCart = true;
+            this.addToCartSuccess = false;
+            this.addToCartError = '';
+
+            let cartData = {
+                product_id: this.productId
+            };
+
+            try {
+                const response = await this.$root.addToCart(cartData);
+                if (response.success) {
+                    if (this.chosenCount > 1) {
+                        await this.updateQuantity(response);
+                    } else {
+                        this.finishCartOperation(response);
+                    }
+                } else {
+                    this.isAddingToCart = false;
+                    this.addToCartError = 'Failed to add to cart.';
+                }
+            } catch (error) {
+                this.isAddingToCart = false;
+                this.addToCartError = 'An error occurred: ' + error;
+            }
+        },
+        async updateQuantity(previousResponse) {
+            let updateData = {
+                product_id: this.productId,
+                quantity: this.chosenCount
+            };
+            try {
+                const response = await this.$root.updateCartQuantity(updateData);
+                if (response.success) {
+                    this.finishCartOperation(response);
+                } else {
+                    this.finishCartOperation(previousResponse);
+                }
+            } catch (error) {
+                this.finishCartOperation(previousResponse);
+            }
+        },
+        finishCartOperation(response) {
+            this.isAddingToCart = false;
+            this.addToCartSuccess = true;
+
+            // Calculate total cart count
+            const cartCount = this.calculateCartQuantity(response.data);
+
+            // Update global cart count for Vue to access
+            window.cartCount = cartCount;
+
+            // Update root Vue instance cartQuantity
+            if (this.$root && typeof this.$root.cartQuantity !== 'undefined') {
+                this.$root.cartQuantity = cartCount;
+            }
+
+            // Update cart count in menu
+            jQuery('.menu-item a:contains("Cart")').text('🛒 Cart (' + cartCount + ')');
+
+            // Reset success message after delay
+            setTimeout(() => {
+                this.addToCartSuccess = false;
+            }, 3000);
+        },
+        calculateCartQuantity(cartData) {
+            if (!cartData) return 0;
+            return Object.values(cartData).reduce((sum, quantity) => {
+                const num = parseInt(quantity, 10);
+                return sum + (isNaN(num) ? 0 : num);
+            }, 0);
+        },
+        buyNow() {
+            // First add to cart
+            if (this.isAddingToCart || this.effectiveStockLevel <= 0) {
+                return;
+            }
+
+            this.addToCart();
+
+            // Then redirect to checkout
+            setTimeout(() => {
+                if (this.addToCartSuccess) {
+                    window.location.href = this.cartUrl;
+                }
+            }, 800); // Slightly longer delay to ensure cart is updated
+        }
+    },
+    template: `
+        <div class=" font-body rounded-sm relative">
+          
+            <div class="flex flex-col gap-y-1 [&>*]:w-full group">
+                <a :href="url">
+                <div class=" mb-2 relative aspect-square">
+                  
+                 <img class="group-hover:scale-105 text-transparent duration-200 bg-yellowDark group-hover:rotate-1 rounded-xl overflow-hidden w-full h-full object-cover object-center z-40   relative" :src="image" :alt="title" /> 
+                </a>
+                <h4 v-if="category" class="text-xs font-light text-pink-400 hidden md:block" v-html="category"></h4>
+                <h3 class="md:text-3xl text-balance leading-[19px] md:leading-6 dynapuff-700 uppercase group-hover:text-pink duration-200" v-html="title"></h3>
+                <span v-if="price">£{{ price.toFixed(2) }}</span>
+       
+                <span class="text-xs font-light text-red-600" v-if="isOutOfStock">Out of stock</span>
+                <!-- Status messages -->
+                <div v-if="addToCartSuccess" class="text-green-600 text-sm mt-1">Added to cart!</div>
+                <div v-if="addToCartError" class="text-red-600 text-sm mt-1">{{ addToCartError }}</div>
+             
+               
+            </div>
+        </div>
+    `
+});
