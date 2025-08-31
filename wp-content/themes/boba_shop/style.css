@@ -1229,6 +1229,8 @@ select {
   max-width: 28rem;
 }.max-w-screen-xl {
   max-width: 1280px;
+}.flex-shrink {
+  flex-shrink: 1;
 }.flex-grow {
   flex-grow: 1;
 }.border-collapse {
