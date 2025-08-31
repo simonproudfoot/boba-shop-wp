@@ -239,9 +239,36 @@ get_header();
             <!-- Order Items -->
             <?php 
             $order_items = get_order_items($order_details->order_id);
+            
+            // If no order items in database, try to get from session as fallback
+            if (empty($order_items)) {
+                $cart = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
+                if (!empty($cart)) {
+                    // Convert cart data to display format
+                    $order_items = [];
+                    foreach ($cart as $item) {
+                        $product_id = isset($item['product_id']) ? $item['product_id'] : $item;
+                        $quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
+                        $price = floatval(get_post_meta($product_id, 'price', true));
+                        
+                        $order_items[] = (object) [
+                            'product_name' => get_the_title($product_id),
+                            'product_sku' => get_post_meta($product_id, 'sku', true),
+                            'variant_id' => isset($item['variant_id']) ? $item['variant_id'] : '',
+                            'quantity' => $quantity,
+                            'unit_price' => $price,
+                            'total_price' => $price * $quantity
+                        ];
+                    }
+                }
+            }
+            
             if (!empty($order_items)): ?>
             <div class="bg-gray-900 rounded-lg p-6 mb-8">
                 <h3 class="text-xl font-bold mb-4">Items Ordered</h3>
+                <?php if (empty(get_order_items($order_details->order_id)) && !empty($_SESSION['cart'])): ?>
+                <p class="text-yellow-400 text-sm mb-4">Note: Items shown from your session data</p>
+                <?php endif; ?>
                 <div class="space-y-3">
                     <?php foreach ($order_items as $item): ?>
                     <div class="flex justify-between items-center border-b border-gray-700 pb-3">
